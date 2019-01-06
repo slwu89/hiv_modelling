@@ -28,11 +28,15 @@ a_cells <- seq(from=0,to=A_max,by=da)
 a_cells_n <- length(a_cells)
 
 # the solution mesh
-U <- matrix(0,nrow = t_cells_n+1,ncol = a_cells_n)
+U <- matrix(0,nrow = t_cells_n,ncol = a_cells_n,dimnames = list(
+  as.character(round(t_cells,digits = 4)),
+  as.character(round(a_cells,digits = 4))
+))
 
 # initial density
 n <- 1e5
 u0 <- dnorm(x = a_cells,mean = 20,sd = 5)
+# u0 <- dexp(x = a_cells,rate = 1/52)
 u0 <- (u0*n)/sum(u0)
 
 U[1,] <- u0
@@ -51,10 +55,10 @@ mu <- function(a,t){
 
 # run simulation
 pb <- txtProgressBar(min = 1,max = (t_cells_n-1))
-for(t in 2:(t_cells_n-1)){
+for(t in 1:(t_cells_n-1)){
   
   a <- 1 # for births
-  U[t,a] <- beta(U,t)
+  U[t+1,a] <- beta(U,t)*dt
   
   for(a in 2:a_cells_n){
     
@@ -64,3 +68,17 @@ for(t in 2:(t_cells_n-1)){
   
   setTxtProgressBar(pb,t)
 }
+
+library(reshape2)
+library(ggplot2)
+library(viridis)
+U_gg <- melt(U,varnames = c("time","age"))
+
+ggplot() +
+  geom_raster(aes(x=time,y=age,fill=value),data=U_gg[U_gg$time>18,]) +
+  # stat_contour(aes(x=time,y=age,z=value),colour=grey(0.75,0.75),size=0.25,data = U_gg,geom = "contour") +
+  scale_fill_viridis() +
+  # geom_contour() +
+  theme_bw() +
+  theme(axis.title.x=element_blank(),axis.title.y=element_blank(),
+        panel.grid.major=element_blank(),panel.grid.minor=element_blank())
