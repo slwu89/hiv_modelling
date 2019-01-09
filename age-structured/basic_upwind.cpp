@@ -10,7 +10,7 @@
 #include <Rcpp.h>
 #include <algorithm>
  
- // [[Rcpp::depends(RcppProgress)]]
+// [[Rcpp::depends(RcppProgress)]]
 #include <progress.hpp>
 
 /* fertility function */
