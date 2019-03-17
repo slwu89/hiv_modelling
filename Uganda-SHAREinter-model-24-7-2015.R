@@ -1,6 +1,6 @@
 
 #Uganda SHARE-trial model
-rm(list=ls())
+rm(list=ls());gc()
 library(FME)
 #library(ggplot2)
 pars=list(T_f=100000, T_m=100000, beta_FM=0.002, beta_MF=0.004, theta=25, circum=0.60, phi_0=0.12, phi=0.0,phi_v=0,treat=0.015,
@@ -14,6 +14,7 @@ FSW.ode<- function(pars,times=seq(1979,2011,by=1))
 { # returns rate of change
   with(as.list(c(state, pars)), 
 {
+  # browser()
 #circumcision
   psi=1-circum
   if(t<2002){
