@@ -8,11 +8,13 @@
 
 /* libraries */
 #include <Rcpp.h>
+#include <math.h>
 
 /* get things out of Rcpp::List */
 #define RLIST(name) Rcpp::as<double>(pars[name]);
 
 /* model */
+// [[Rcpp::export]]
 Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp::List& pars){
 
   /* out */
@@ -57,7 +59,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
     mu_I = RLIST("mu_I.1");
   } else if(t >= 2015.0){
 
-    sigma = RLIST(pars["sigma.2"]);
+    sigma = RLIST("sigma.2");
 
     con_FG = RLIST("con_FG.2");
     con_MG = RLIST("con_MG.2");
@@ -91,6 +93,12 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double unsup2rate = RLIST("unsup.2.rate");
   double unsup1rate = RLIST("unsup.1.rate");
   double perc2ndline = RLIST("perc.2nd.line");
+
+  double con_eff = RLIST("con_eff");
+  double circum_eff = RLIST("circum_eff");
+
+  double birth = RLIST("birth");
+  double rho = RLIST("rho");
 
   /* general female */
   double S_FG = state[0];
@@ -153,8 +161,8 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double A_M2 = state[47];
 
   /* what are these */
-  double D = state[48];
-  double D_HIV = state[49];
+  // double D = state[48];
+  // double D_HIV = state[49];
 
   /* aggregated pop sizes */
   double N_FG = S_FG+IV_FG+I_FG+T1_FG+T2_FG+T1S_FG+T2S_FG+A_FG;
@@ -163,11 +171,11 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double N_FSW = S_FSW+IV_FSW+I_FSW+T1_FSW+T2_FSW+T1S_FSW+T2S_FSW+A_FSW;
   double N_MC = S_MC+IV_MC+I_MC+T1_MC+T2_MC+T1S_MC+T2S_MC+A_MC;
 
-  doube N_F2 = S_F2+IV_F2+I_F2+T1_F2+T2_F2+T1S_F2+T2S_F2+A_F2;
-  doube N_M2 = S_M2+IV_M2+I_M2+T1_M2+T2_M2+T1S_M2+T2S_M2+A_M2;
+  double N_F2 = S_F2+IV_F2+I_F2+T1_F2+T2_F2+T1S_F2+T2S_F2+A_F2;
+  double N_M2 = S_M2+IV_M2+I_M2+T1_M2+T2_M2+T1S_M2+T2S_M2+A_M2;
 
-  double N_F = N_FG + N_FSW + N_F2;
-  double N_M = N_MG + N_MC + N_M2;
+  // double N_F = N_FG + N_FSW + N_F2;
+  // double N_M = N_MG + N_MC + N_M2;
 
   /* contact constraints */
   double C_FGMG = RLIST("C_FGMG")
@@ -285,7 +293,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[4] = (sup1rate * T1_FG) - ((mu + mu_T + unsup1rate) * T1S_FG); /* T1S_FG */
   dx[5] = (perc2ndline * T1_FG) + (unsup2rate * T2S_FG) - ((mu + mu_T + sup2rate + falloff2) * T2_FG); /* T2_FG */
   dx[6] = (sup2rate * T2_FG) - ((mu + mu_T + unsup2rate) * T2S_FG); /* T2S_FG */
-  dx[7] = (omega * I_FG) - ((mu + mu_A + rho) * A_FG) /* A_FG */
+  dx[7] = (omega * I_FG) - ((mu + mu_A + rho) * A_FG); /* A_FG */
 
   /* general males */
   dx[8] = (birth * N_MG) - ((lambda_MG + mu) * S_MG); /* S_MG */
@@ -295,7 +303,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[12] = (sup1rate * T1_MG) - ((mu + mu_T + unsup1rate) * T1S_MG); /* T1S_MG */
   dx[13] = (perc2ndline * T1_MG) + (unsup2rate * T2S_MG) - ((mu + mu_T + sup2rate + falloff2) * T2_MG); /* T2_MG */
   dx[14] = (sup2rate * T2_MG) - ((mu + mu_T + unsup2rate) * T2S_MG); /* T2S_MG */
-  dx[15] = (omega * I_MG) - ((mu + mu_A + rho) * A_MG) /* A_MG */
+  dx[15] = (omega * I_MG) - ((mu + mu_A + rho) * A_MG); /* A_MG */
 
   /* female sex workers */
   dx[16] = (birth * N_FSW) - ((lambda_FSW + mu) * S_FSW); /* S_FSW */
@@ -305,7 +313,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[20] = (sup1rate * T1_FSW) - ((mu + mu_T + unsup1rate) * T1_FSW); /* T1S_FSW */
   dx[21] = (perc2ndline * T1_FSW) + (unsup2rate * T2S_FSW) - ((mu + mu_T + sup2rate + falloff2) * T2_FSW); /* T2_FSW */
   dx[22] = (sup2rate * T2_FSW) - ((mu + mu_T + unsup2rate) * T2S_FSW); /* T2S_FSW */
-  dx[23] = (omega * I_FSW) - ((mu + mu_A + rho) * A_FSW) /* A_FSW */
+  dx[23] = (omega * I_FSW) - ((mu + mu_A + rho) * A_FSW); /* A_FSW */
 
   /* male clients */
   dx[24] = (birth * N_MC) - ((lambda_MC + mu) * S_MC); /* S_MC */
@@ -315,7 +323,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[28] = (sup1rate * T1_MC) - ((mu + mu_T + unsup1rate) * T1_MC); /* T1S_MC */
   dx[29] = (perc2ndline * T1_MC) + (unsup2rate * T2S_MC) - ((mu + mu_T + sup2rate + falloff2) * T2_MC); /* T2_MC */
   dx[30] = (sup2rate * T2_MC) - ((mu + mu_T + unsup2rate) * T2S_MC); /* T2S_MC */
-  dx[31] = (omega * I_MC) - ((mu + mu_A + rho) * A_MC) /* A_MC */
+  dx[31] = (omega * I_MC) - ((mu + mu_A + rho) * A_MC); /* A_MC */
 
   /* female 2+ */
   dx[32] = (birth * N_F2) - ((lambda_F2 + mu) * S_F2); /* S_F2 */
@@ -325,17 +333,17 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[36] = (sup1rate * T1_F2) - ((mu + mu_T + unsup1rate) * T1_F2); /* T1S_F2 */
   dx[37] = (perc2ndline * T1_F2) + (unsup2rate * T2S_F2) - ((mu + mu_T + sup2rate + falloff2) * T2_F2); /* T2_F2 */
   dx[38] = (sup2rate * T2_F2) - ((mu + mu_T + unsup2rate) * T2S_F2); /* T2S_F2 */
-  dx[39] = (omega * I_F2) - ((mu + mu_A + rho) * A_F2) /* A_F2 */
+  dx[39] = (omega * I_F2) - ((mu + mu_A + rho) * A_F2); /* A_F2 */
 
   /* male 2+ */
   dx[40] = (birth * N_M2) - ((lambda_M2 + mu) * S_M2); /* S_M2 */
   dx[41] = (lambda_M2 * S_M2) - ((mu + Tau) * IV_M2); /* IV_M2 */
-  dx[42] = (Tau * IV_M2) + (rho * A_M2) + (falloff1 * T1_M2) + (fallofM2 * T2_M2) - ((mu_I + mu + sigma + omega) * I_M2); /* I_M2 */
+  dx[42] = (Tau * IV_M2) + (rho * A_M2) + (falloff1 * T1_M2) + (falloff2 * T2_M2) - ((mu_I + mu + sigma + omega) * I_M2); /* I_M2 */
   dx[43] = (sigma * I_M2) + (unsup1rate * T1S_M2) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_M2); /* T1_M2 */
   dx[44] = (sup1rate * T1_M2) - ((mu + mu_T + unsup1rate) * T1_M2); /* T1S_M2 */
-  dx[45] = (perc2ndline * T1_M2) + (unsup2rate * T2S_M2) - ((mu + mu_T + sup2rate + fallofM2) * T2_M2); /* T2_M2 */
+  dx[45] = (perc2ndline * T1_M2) + (unsup2rate * T2S_M2) - ((mu + mu_T + sup2rate + falloff2) * T2_M2); /* T2_M2 */
   dx[46] = (sup2rate * T2_M2) - ((mu + mu_T + unsup2rate) * T2S_M2); /* T2S_M2 */
-  dx[47] = (omega * I_M2) - ((mu + mu_A + rho) * A_M2) /* A_M2 */
+  dx[47] = (omega * I_M2) - ((mu + mu_A + rho) * A_M2); /* A_M2 */
 
   return out;
 };
