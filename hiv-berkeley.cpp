@@ -16,7 +16,7 @@
 Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp::List& pars){
 
   /* out */
-  Rcpp::List out(10);
+  Rcpp::List out(1);
 
   /* dx/dt */
   Rcpp::NumericVector dx(state.size());
@@ -221,7 +221,9 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double beta_M2TS = P_transmission*T_factor*C_M2F2;
   double beta_M2A = P_transmission*C_M2F2;
 
-  /* force of infection */
+  /* forces of infection */
+
+  /* general population */
   double con_circ_G = ((1.0-con_FG)+con_FG*(1.0-con_eff))*((1.0-circum) + circum*(1.0-circum_eff));
   double lambda_MG = (beta_MGI * (I_FG/N_FG) * con_circ_G) + /* FOI from I females  */
     (beta_MGV * (IV_FG/N_FG) * con_circ_G) + /* FOI from IV females */
@@ -279,9 +281,9 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[0] = (birth * N_FG) - ((lambda_FG + mu) * S_FG); /* S_FG */
   dx[1] = (lambda_FG * S_FG) - ((mu + Tau) * IV_FG); /* IV_FG */
   dx[2] = (Tau * IV_FG) + (rho * A_FG) + (falloff1 * T1_FG) + (falloff2 * T2_FG) - ((mu_I + mu + sigma + omega) * I_FG); /* I_FG */
-  dx[3] = (sigma * I_FG) + (unsup1rate * T1S_FG) - ((mu + mu_I + perc2ndline + sup1rate) * T1_FG); /* T1_FG */
+  dx[3] = (sigma * I_FG) + (unsup1rate * T1S_FG) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_FG); /* T1_FG */
   dx[4] = (sup1rate * T1_FG) - ((mu + mu_T + unsup1rate) * T1S_FG); /* T1S_FG */
-  dx[5] = (perc2ndline * T1_FG) - ((mu + mu_T + sup2rate + falloff2) * T2_FG); /* T2_FG */
+  dx[5] = (perc2ndline * T1_FG) + (unsup2rate * T2S_FG) - ((mu + mu_T + sup2rate + falloff2) * T2_FG); /* T2_FG */
   dx[6] = (sup2rate * T2_FG) - ((mu + mu_T + unsup2rate) * T2S_FG); /* T2S_FG */
   dx[7] = (omega * I_FG) - ((mu + mu_A + rho) * A_FG) /* A_FG */
 
@@ -289,33 +291,51 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[8] = (birth * N_MG) - ((lambda_MG + mu) * S_MG); /* S_MG */
   dx[9] = (lambda_MG * S_MG) - ((mu + Tau) * IV_MG); /* IV_FG */
   dx[10] = (Tau * IV_MG) + (rho * A_MG) + (falloff1 * T1_MG) + (falloff2 * T2_MG) - ((mu_I + mu + sigma + omega) * I_MG); /* I_MG */
-  dx[11] = (sigma * I_MG) + (unsup1rate * T1S_MG) - ((mu + mu_I + perc2ndline + sup1rate) * T1_MG); /* T1_MG */
+  dx[11] = (sigma * I_MG) + (unsup1rate * T1S_MG) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_MG); /* T1_MG */
   dx[12] = (sup1rate * T1_MG) - ((mu + mu_T + unsup1rate) * T1S_MG); /* T1S_MG */
-  dx[13] = (perc2ndline * T1_MG) - ((mu + mu_T + sup2rate + falloff2) * T2_MG); /* T2_MG */
+  dx[13] = (perc2ndline * T1_MG) + (unsup2rate * T2S_MG) - ((mu + mu_T + sup2rate + falloff2) * T2_MG); /* T2_MG */
   dx[14] = (sup2rate * T2_MG) - ((mu + mu_T + unsup2rate) * T2S_MG); /* T2S_MG */
   dx[15] = (omega * I_MG) - ((mu + mu_A + rho) * A_MG) /* A_MG */
 
   /* female sex workers */
-  dS_FSW = -lambda_FSW*S_FSW-(mu)*S_FSW + birth*N_FSW
-  dIV_FSW = lambda_FSW*S_FSW-mu*IV_FSW - Tau*IV_FSW
-  dI_FSW= Tau * IV_FSW-(mu_I+mu)*I_FSW +rho*A_FSW - sigma*I_FSW - omega*I_FSW + fall.off.1*T1_FSW + fall.off.2*T2_FSW
-  dT1_FSW= sigma*I_FSW - (mu+mu_I)*T1_FSW - perc.2nd.line *T1_FSW - sup.1.rate*(T1_FSW) + unsup.1.rate*T1S_FSW
-  dT1S_FSW = sup.1.rate*T1_FSW - unsup.1.rate*T1S_FSW -(mu+mu_T)*T1S_FSW
-  dT2_FSW = perc.2nd.line*T1_FSW-sup.2.rate*T2_FSW - (mu+mu_I)*T2_FSW - fall.off.2*T2_FSW
-  dT2S_FSW = sup.2.rate*T2_FSW - unsup.2.rate*T2S_FSW -(mu +mu_T)*T2S_FSW
-  dA_FSW= omega*I_FSW - rho*A_FSW -(mu+mu_A)*A_FSW
+  dx[16] = (birth * N_FSW) - ((lambda_FSW + mu) * S_FSW); /* S_FSW */
+  dx[17] = (lambda_FSW * S_FSW) - ((mu + Tau) * IV_FSW); /* IV_FSW */
+  dx[18] = (Tau * IV_FSW) + (rho * A_FSW) + (falloff1 * T1_FSW) + (falloff2 * T2_FSW) - ((mu_I + mu + sigma + omega) * I_FSW); /* I_FSW */
+  dx[19] = (sigma * I_FSW) + (unsup1rate * T1S_FSW) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_FSW); /* T1_FSW */
+  dx[20] = (sup1rate * T1_FSW) - ((mu + mu_T + unsup1rate) * T1_FSW); /* T1S_FSW */
+  dx[21] = (perc2ndline * T1_FSW) + (unsup2rate * T2S_FSW) - ((mu + mu_T + sup2rate + falloff2) * T2_FSW); /* T2_FSW */
+  dx[22] = (sup2rate * T2_FSW) - ((mu + mu_T + unsup2rate) * T2S_FSW); /* T2S_FSW */
+  dx[23] = (omega * I_FSW) - ((mu + mu_A + rho) * A_FSW) /* A_FSW */
 
   /* male clients */
-  dS_MC = -lambda_MC*S_MC-(mu)*S_MC + birth*N_MC
-  dIV_MC = lambda_MC*S_MC-mu*IV_MC - Tau*IV_MC
-  dI_MC = Tau*IV_MC-(mu_I+mu)*I_MC - sigma*I_MC - omega*I_MC +rho*A_MC + fall.off.1*T1_MC + fall.off.2*T2_MC
-  dT1_MC= sigma*I_MC - (mu+mu_I)*T1_MC - perc.2nd.line *T1_MC - sup.1.rate*(T1_MC) + unsup.1.rate*T1S_MC
-  dT1S_MC = sup.1.rate*T1_MC - unsup.1.rate*T1S_MC -(mu+mu_T)*T1S_MC
-  dT2_MC = perc.2nd.line*T1_MC-sup.2.rate*T2_MC - (mu+mu_I)*T2_MC - fall.off.2*T2_MC
-  dT2S_MC = sup.2.rate*T2_MC - unsup.2.rate*T2S_MC -(mu +mu_T)*T2S_MC
-  dA_MC = omega*I_MC - rho*A_MC -(mu+mu_A)*A_MC
+  dx[24] = (birth * N_MC) - ((lambda_MC + mu) * S_MC); /* S_MC */
+  dx[25] = (lambda_MC * S_MC) - ((mu + Tau) * IV_MC); /* IV_MC */
+  dx[26] = (Tau * IV_MC) + (rho * A_MC) + (falloff1 * T1_MC) + (falloff2 * T2_MC) - ((mu_I + mu + sigma + omega) * I_MC); /* I_MC */
+  dx[27] = (sigma * I_MC) + (unsup1rate * T1S_MC) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_MC); /* T1_MC */
+  dx[28] = (sup1rate * T1_MC) - ((mu + mu_T + unsup1rate) * T1_MC); /* T1S_MC */
+  dx[29] = (perc2ndline * T1_MC) + (unsup2rate * T2S_MC) - ((mu + mu_T + sup2rate + falloff2) * T2_MC); /* T2_MC */
+  dx[30] = (sup2rate * T2_MC) - ((mu + mu_T + unsup2rate) * T2S_MC); /* T2S_MC */
+  dx[31] = (omega * I_MC) - ((mu + mu_A + rho) * A_MC) /* A_MC */
 
   /* female 2+ */
+  dx[32] = (birth * N_F2) - ((lambda_F2 + mu) * S_F2); /* S_F2 */
+  dx[33] = (lambda_F2 * S_F2) - ((mu + Tau) * IV_F2); /* IV_F2 */
+  dx[34] = (Tau * IV_F2) + (rho * A_F2) + (falloff1 * T1_F2) + (falloff2 * T2_F2) - ((mu_I + mu + sigma + omega) * I_F2); /* I_F2 */
+  dx[35] = (sigma * I_F2) + (unsup1rate * T1S_F2) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_F2); /* T1_F2 */
+  dx[36] = (sup1rate * T1_F2) - ((mu + mu_T + unsup1rate) * T1_F2); /* T1S_F2 */
+  dx[37] = (perc2ndline * T1_F2) + (unsup2rate * T2S_F2) - ((mu + mu_T + sup2rate + falloff2) * T2_F2); /* T2_F2 */
+  dx[38] = (sup2rate * T2_F2) - ((mu + mu_T + unsup2rate) * T2S_F2); /* T2S_F2 */
+  dx[39] = (omega * I_F2) - ((mu + mu_A + rho) * A_F2) /* A_F2 */
 
   /* male 2+ */
+  dx[40] = (birth * N_M2) - ((lambda_M2 + mu) * S_M2); /* S_M2 */
+  dx[41] = (lambda_M2 * S_M2) - ((mu + Tau) * IV_M2); /* IV_M2 */
+  dx[42] = (Tau * IV_M2) + (rho * A_M2) + (falloff1 * T1_M2) + (fallofM2 * T2_M2) - ((mu_I + mu + sigma + omega) * I_M2); /* I_M2 */
+  dx[43] = (sigma * I_M2) + (unsup1rate * T1S_M2) - ((mu + mu_I + perc2ndline + sup1rate + falloff1) * T1_M2); /* T1_M2 */
+  dx[44] = (sup1rate * T1_M2) - ((mu + mu_T + unsup1rate) * T1_M2); /* T1S_M2 */
+  dx[45] = (perc2ndline * T1_M2) + (unsup2rate * T2S_M2) - ((mu + mu_T + sup2rate + fallofM2) * T2_M2); /* T2_M2 */
+  dx[46] = (sup2rate * T2_M2) - ((mu + mu_T + unsup2rate) * T2S_M2); /* T2S_M2 */
+  dx[47] = (omega * I_M2) - ((mu + mu_A + rho) * A_M2) /* A_M2 */
+
+  return out;
 };

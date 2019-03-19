@@ -11,6 +11,12 @@
   * proportions of pop in each risk category is constant (this could be fixed partially with alpha, but would suffer problems of multicollinearity)
   * not really an issue, but a "gotcha"; *birth* parameter is per-capita, not per-female, also its really the birth at a lag of 15 years multiplied by survival to age 15 (or whatever age of sexual encounters is)
   * all treatment parameters are the same between M/F
+  * no difference between T1 and T2 in terms of efficacy?
+
+* Mathematical issues:
+  * in I categories we have T1 * fall.off.1 inflow but there is no fall.off.1 outflow from T1 compartment
+  * in T2S we have outbound movement at rate unsup.2.rate that does not go anywhere; it should be going to T2
+  * in the female 2+ category in I compartment we have inbound rho * I_F2 but it should be rho * A_F2
 
 * Stuff for future development
   * should probably model partnerships forming/dissolving, need to talk to Sandi and (maybe) Joe
