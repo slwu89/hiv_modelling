@@ -45,7 +45,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
 
   if(t < 2015.0){
 
-    sigma = RLIST("sigma");
+    sigma = RLIST("sigma.1");
 
     con_FG = RLIST("con_FG.1");
     con_MG = RLIST("con_MG.1");
@@ -71,6 +71,20 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
     mu_A = RLIST("mu_A.2");
     mu_T = RLIST("mu_T.2");
     mu_I = RLIST("mu_I.2");
+  } else {
+
+    sigma = NAN;
+
+    con_FG = NAN;
+    con_MG = NAN;
+    con_MC = NAN;
+    con_FSW = NAN;
+    con_F2 = NAN;
+    con_M2 = NAN;
+    circum = NAN;
+    mu_A = NAN;
+    mu_T = NAN;
+    mu_I = NAN;
   }
 
   if(t < 2013.0){
@@ -82,6 +96,9 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   } else if(t >= 2015.0){
     sup1rate = RLIST("sup.1.rate.post2015");
     falloff1 = RLIST("fall.off.1.post2015");
+  } else {
+    sup1rate = NAN; /* to shut up the compiler... */
+    falloff1 = NAN;
   }
 
   /* constants */
@@ -160,7 +177,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double T2S_M2 = state[46];
   double A_M2 = state[47];
 
-  /* what are these */
+  /* these are death rates (all cause and HIV specific mortality) */
   // double D = state[48];
   // double D_HIV = state[49];
 
@@ -344,6 +361,27 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[45] = (perc2ndline * T1_M2) + (unsup2rate * T2S_M2) - ((mu + mu_T + sup2rate + falloff2) * T2_M2); /* T2_M2 */
   dx[46] = (sup2rate * T2_M2) - ((mu + mu_T + unsup2rate) * T2S_M2); /* T2S_M2 */
   dx[47] = (omega * I_M2) - ((mu + mu_A + rho) * A_M2); /* A_M2 */
+
+  /* all-cause and HIV-specific mortality */
+  dx[48] = mu*(S_FG + IV_FG + I_FG + T1_FG + T1S_FG+ T2_FG + T2S_FG+ A_FG +
+             S_MG + IV_MG + I_MG + T1_MG + T1S_MG + T2_MG + T2S_MG + A_MG +
+             S_FSW + IV_FSW + I_FSW + A_FSW + T1_FSW + T1S_FSW + T2_FSW + T2S_FSW +
+             S_MC + IV_MC + I_MC + T1_MC + T1S_MC + T2_MC + T2S_MC + A_MC +
+             S_F2 + IV_F2 + I_F2 + T1_F2 + T1S_F2 + T2_F2 + T2S_F2 + A_F2 +
+             S_M2 + IV_M2 + I_M2 + T1_M2 + T1S_M2 + T2_M2 + T2S_M2 + A_M2) +
+    mu_I*(I_FG + I_MG  + I_FSW + I_MC + I_F2 + I_M2 +
+            T1_FG + T1_MG + T1_FSW +T1_MC + T1_F2 + T1_M2 +
+            T2_FG + T2_MG + T2_FSW +T2_MC + T2_F2 + T2_M2) +
+    mu_T*(T1S_FG + T1S_MG + T1S_FSW + T1S_MC + T1S_F2 + T1S_M2 +
+            T2S_FG + T2S_MG + T2S_FSW + T2S_MC + T2S_F2 + T2S_M2) +
+    mu_A*(A_FG + A_MG + A_FSW + A_MC + A_F2 + A_M2);
+
+  dx[49] = mu_I*(I_FG + I_MG  + I_FSW + I_MC + I_F2 + I_M2 +
+                    T1_FG + T1_MG + T1_FSW +T1_MC + T1_F2 + T1_M2 +
+                    T2_FG + T2_MG + T2_FSW +T2_MC + T2_F2 + T2_M2) +
+    mu_T*(T1S_FG + T1S_MG + T1S_FSW + T1S_MC + T1S_F2 + T1S_M2 +
+            T2S_FG + T2S_MG + T2S_FSW + T2S_MC + T2S_F2 + T2S_M2) +
+    mu_A*(A_FG + A_MG + A_FSW + A_MC + A_F2 + A_M2);
 
   return out;
 };
