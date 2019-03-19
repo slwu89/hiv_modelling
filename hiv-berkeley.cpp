@@ -182,11 +182,13 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double HighV_factor = RLIST("HighV_factor");
   double T_factor = RLIST("T_factor");
 
+  /* general population */
   double beta_FGI = P_transmission*C_FGMG;
   double beta_FGV = P_transmission*HighV_factor*C_FGMG;
   double beta_FGT = P_transmission*C_FGMG;
   double beta_FGTS = P_transmission*T_factor*C_FGMG;
   double beta_FGA = P_transmission*C_FGMG;
+
   double beta_MGI = P_transmission*C_MGFG;
   double beta_MGV = P_transmission*HighV_factor*C_MGFG;
   double beta_MGT = P_transmission*C_MGFG;
@@ -199,6 +201,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double beta_FSWT = P_transmission*C_FSWC;
   double beta_FSWTS = P_transmission*T_factor*C_FSWC;
   double beta_FSWA = P_transmission*C_FSWC;
+
   double beta_MCI = P_transmission*C_CFSW;
   double beta_MCV = P_transmission*HighV_factor*C_CFSW;
   double beta_MCT = P_transmission*C_CFSW;
@@ -211,6 +214,7 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double beta_F2T = P_transmission*C_F2M2;
   double beta_F2TS = P_transmission*T_factor*C_F2M2;
   double beta_F2A = P_transmission*C_F2M2;
+
   double beta_M2I = P_transmission*C_M2F2;
   double beta_M2V = P_transmission*HighV_factor*C_M2F2;
   double beta_M2T = P_transmission*C_M2F2;
@@ -218,19 +222,58 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double beta_M2A = P_transmission*C_M2F2;
 
   /* force of infection */
-  double lambda_MG;
+  double con_circ_G = ((1.0-con_FG)+con_FG*(1.0-con_eff))*((1.0-circum) + circum*(1.0-circum_eff));
+  double lambda_MG = (beta_MGI * (I_FG/N_FG) * con_circ_G) + /* FOI from I females  */
+    (beta_MGV * (IV_FG/N_FG) * con_circ_G) + /* FOI from IV females */
+    (beta_MGT * (T1_FG/N_FG) * con_circ_G) + /* FOI from T1 females */
+    (beta_MGTS * (T1S_FG/N_FG) * con_circ_G) + /* FOI from T1 virally suppressed females */
+    (beta_MGT * (T2_FG/N_FG) * con_circ_G) + /* FOI from T2 females */
+    (beta_MGTS * (T2S_FG/N_FG) * con_circ_G) + /* FOI from T2 virally suppressed females */
+    (beta_MGA * (A_FG/N_FG) * con_circ_G); /* FOI from AIDS females */
 
-  double lambda_FG;
+  double lambda_FG = (beta_FGI * (I_MG/N_MG) * con_circ_G) +
+    (beta_FGV * (IV_MG/N_MG) * con_circ_G) +
+    (beta_FGT * (T1_MG/N_MG) * con_circ_G) +
+    (beta_FGTS * (T1S_MG/N_MG) * con_circ_G) +
+    (beta_FGT * (T2_MG/N_MG) * con_circ_G) +
+    (beta_FGTS * (T2S_MG/N_MG) * con_circ_G) +
+    (beta_FGA * (A_MG/N_MG) * con_circ_G);
 
   /* FSW and C */
-  double lambda_MC;
+  double con_circ_FSW = ((1.0-con_FSW)+con_FSW*(1.0-con_eff))*((1.0-circum) + circum*(1.0-circum_eff));
+  double lambda_MC = (beta_MCI*(I_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCV*(IV_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCT*(T1_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCTS*(T1S_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCT*(T2_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCTS*(T2S_FSW/N_FSW) * con_circ_FSW) +
+    (beta_MCA*(A_FSW/N_FSW) * con_circ_FSW);
 
-  double lambda_FSW;
+  double lambda_FSW = (beta_FSWI * (I_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWV * (IV_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWT * (T1_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWTS * (T1S_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWT * (T2_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWTS * (T2S_MC/N_MC) * con_circ_FSW) +
+    (beta_FSWA * (A_MC/N_MC) * con_circ_FSW);
 
   /* F2 and M2 */
-  double lambda_M2;
+  double con_circ_2 = ((1.0-con_F2)+con_F2*(1.0-con_eff))*((1.0-circum) + circum*(1.0-circum_eff));
+  double lambda_M2 = (beta_M2I * (I_F2/N_F2) * con_circ_2) +
+    (beta_M2V * (IV_F2/N_F2) * con_circ_2) +
+    (beta_M2T * (T1_F2/N_F2) * con_circ_2) +
+    (beta_M2TS * (T1S_F2/N_F2) * con_circ_2) +
+    (beta_M2T * (T2_F2/N_F2) * con_circ_2) +
+    (beta_M2TS * (T2S_F2/N_F2) * con_circ_2) +
+    (beta_M2A * (A_F2/N_F2) * con_circ_2);
 
-  double lambda_F2;
+  double lambda_F2 = (beta_F2I * (I_M2/N_M2) * con_circ_2) +
+    (beta_F2V * (IV_M2/N_M2) * con_circ_2) +
+    (beta_F2T * (T1_M2/N_M2) * con_circ_2) +
+    (beta_F2TS * (T1S_M2/N_M2) * con_circ_2) +
+    (beta_F2T * (T2_M2/N_M2) * con_circ_2) +
+    (beta_F2TS * (T2S_M2/N_M2) * con_circ_2) +
+    (beta_F2A * (A_M2/N_M2) * con_circ_2);
 
   /* general females */
   dx[0] = (birth * N_FG) - ((lambda_FG + mu) * S_FG); /* S_FG */
@@ -243,10 +286,34 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   dx[7] = (omega * I_FG) - ((mu + mu_A + rho) * A_FG) /* A_FG */
 
   /* general males */
+  dx[8] = (birth * N_MG) - ((lambda_MG + mu) * S_MG); /* S_MG */
+  dx[9] = (lambda_MG * S_MG) - ((mu + Tau) * IV_MG); /* IV_FG */
+  dx[10] = (Tau * IV_MG) + (rho * A_MG) + (falloff1 * T1_MG) + (falloff2 * T2_MG) - ((mu_I + mu + sigma + omega) * I_MG); /* I_MG */
+  dx[11] = (sigma * I_MG) + (unsup1rate * T1S_MG) - ((mu + mu_I + perc2ndline + sup1rate) * T1_MG); /* T1_MG */
+  dx[12] = (sup1rate * T1_MG) - ((mu + mu_T + unsup1rate) * T1S_MG); /* T1S_MG */
+  dx[13] = (perc2ndline * T1_MG) - ((mu + mu_T + sup2rate + falloff2) * T2_MG); /* T2_MG */
+  dx[14] = (sup2rate * T2_MG) - ((mu + mu_T + unsup2rate) * T2S_MG); /* T2S_MG */
+  dx[15] = (omega * I_MG) - ((mu + mu_A + rho) * A_MG) /* A_MG */
 
   /* female sex workers */
+  dS_FSW = -lambda_FSW*S_FSW-(mu)*S_FSW + birth*N_FSW
+  dIV_FSW = lambda_FSW*S_FSW-mu*IV_FSW - Tau*IV_FSW
+  dI_FSW= Tau * IV_FSW-(mu_I+mu)*I_FSW +rho*A_FSW - sigma*I_FSW - omega*I_FSW + fall.off.1*T1_FSW + fall.off.2*T2_FSW
+  dT1_FSW= sigma*I_FSW - (mu+mu_I)*T1_FSW - perc.2nd.line *T1_FSW - sup.1.rate*(T1_FSW) + unsup.1.rate*T1S_FSW
+  dT1S_FSW = sup.1.rate*T1_FSW - unsup.1.rate*T1S_FSW -(mu+mu_T)*T1S_FSW
+  dT2_FSW = perc.2nd.line*T1_FSW-sup.2.rate*T2_FSW - (mu+mu_I)*T2_FSW - fall.off.2*T2_FSW
+  dT2S_FSW = sup.2.rate*T2_FSW - unsup.2.rate*T2S_FSW -(mu +mu_T)*T2S_FSW
+  dA_FSW= omega*I_FSW - rho*A_FSW -(mu+mu_A)*A_FSW
 
   /* male clients */
+  dS_MC = -lambda_MC*S_MC-(mu)*S_MC + birth*N_MC
+  dIV_MC = lambda_MC*S_MC-mu*IV_MC - Tau*IV_MC
+  dI_MC = Tau*IV_MC-(mu_I+mu)*I_MC - sigma*I_MC - omega*I_MC +rho*A_MC + fall.off.1*T1_MC + fall.off.2*T2_MC
+  dT1_MC= sigma*I_MC - (mu+mu_I)*T1_MC - perc.2nd.line *T1_MC - sup.1.rate*(T1_MC) + unsup.1.rate*T1S_MC
+  dT1S_MC = sup.1.rate*T1_MC - unsup.1.rate*T1S_MC -(mu+mu_T)*T1S_MC
+  dT2_MC = perc.2nd.line*T1_MC-sup.2.rate*T2_MC - (mu+mu_I)*T2_MC - fall.off.2*T2_MC
+  dT2S_MC = sup.2.rate*T2_MC - unsup.2.rate*T2S_MC -(mu +mu_T)*T2S_MC
+  dA_MC = omega*I_MC - rho*A_MC -(mu+mu_A)*A_MC
 
   /* female 2+ */
 
