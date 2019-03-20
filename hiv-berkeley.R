@@ -16,7 +16,7 @@ library(here)
 library(Rcpp)
 library(deSolve)
 
-sourceCpp(here("hiv-berkeley.cpp"))
+sourceCpp(here("src/hiv-berkeley.cpp"))
 
 # parameters
 pars <- list(NF_0 = 12864738, NM_0 = 12594866, P_transmission = 0.01, HighV_factor = 10,
