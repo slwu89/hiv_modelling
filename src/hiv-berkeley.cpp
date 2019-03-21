@@ -13,12 +13,14 @@
 /* get things out of Rcpp::List */
 #define RLIST(name) Rcpp::as<double>(pars[name]);
 
+static const Rcpp::CharacterVector outnames = Rcpp::CharacterVector::create("dx","N_F","N_M","Prev_F","Prev_M","Prev_F");
+
 /* model */
 // [[Rcpp::export]]
 Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp::List& pars){
 
   /* out */
-  Rcpp::List out(1);
+  Rcpp::List out(6);
 
   /* dx/dt */
   Rcpp::NumericVector dx(state.size());
@@ -191,8 +193,8 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
   double N_F2 = S_F2+IV_F2+I_F2+T1_F2+T2_F2+T1S_F2+T2S_F2+A_F2;
   double N_M2 = S_M2+IV_M2+I_M2+T1_M2+T2_M2+T1S_M2+T2S_M2+A_M2;
 
-  // double N_F = N_FG + N_FSW + N_F2;
-  // double N_M = N_MG + N_MC + N_M2;
+  double N_F = N_FG + N_FSW + N_F2;
+  double N_M = N_MG + N_MC + N_M2;
 
   /* contact constraints */
   double C_FGMG = RLIST("C_FGMG")
@@ -383,5 +385,28 @@ Rcpp::List hiv_fsw(const double t, const Rcpp::NumericVector& state, const Rcpp:
             T2S_FG + T2S_MG + T2S_FSW + T2S_MC + T2S_F2 + T2S_M2) +
     mu_A*(A_FG + A_MG + A_FSW + A_MC + A_F2 + A_M2);
 
+  /* useful output (for model fitting) */
+  double Prev_F = ((I_FG+IV_FG+T1_FG+T2_FG+T1S_FG+T2S_FG+A_FG+
+             I_FSW+IV_FSW+T1_FSW+T2_FSW+T1S_FSW+T2S_FSW+A_FSW+
+             I_F2+IV_F2+T1_F2+T1S_F2+T2_F2+T2S_F2+A_F2)/N_F)*100;
+
+  double Prev_M = ((I_MG+IV_MG+T1_MG+T2_MG+T1S_MG+T2S_MG+A_MG+
+             I_MC+IV_MC+T1_MC+T2_MC+T1S_MC+T2S_MC+A_MC+
+             I_M2+IV_M2+T1_M2+T2_M2+T1S_M2+T2S_M2+A_M2)/N_M)*100;
+
+  double Prev = ((I_MG+IV_MG+T1_MG+T2_MG+T1S_MG+T2S_MG+A_MG+
+             I_MC+IV_MC+T1_MC+T2_MC+T1S_MC+T2S_MC+A_MC+
+             I_M2+IV_M2+T1_M2+T2_M2+T1S_M2+T2S_M2+A_M2) +
+            (I_FG+IV_FG+T1_FG+T2_FG+T1S_FG+T2S_FG+A_FG+
+               I_FSW+IV_FSW+T1_FSW+T2_FSW+T1S_FSW+T2S_FSW+A_FSW+
+               I_F2+IV_F2+T1_F2+T1S_F2+T2_F2+T2S_F2+A_F2))*100/(N_F + N_M);
+
+  out[1] = N_F;
+  out[2] = N_M;
+  out[3] = Prev_F;
+  out[4] = Prev_M;
+  out[5] = Prev;
+
+  out.names() = outnames;
   return out;
 };
