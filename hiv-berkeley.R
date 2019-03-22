@@ -78,15 +78,112 @@ ggplot(data = data_pop) +
   theme_bw() +
   xlab("Year") + ylab("Population Size (blue = F, red = M)")
 
-sse <- function(x,data_prev,data_pop){
-  x
-}
+# parameters to fit
+par_ranges <- matrix(data = ,
+                     c(0.0060,0.0600, # P_transmission
+                       5.5000,24.0000, # HighV_factor
+                       0.0000,0.1600, # T_factor
+                       0.5000,1.5000, # C_FGMG
+                       70.0000,150.0000, # C_FSWC
+                       2.0000,7.0000, # C_F2M2
+                       0.1030,0.3810, # Tau
+                       0.0005,0.0015, # mu
+                       0.0300,0.0700, # mu_I_2
+                       0.0070,0.0150, # mu_T_2
+                       0.0700,0.1800, # mu_A_2
+                       0.0300,0.1500, # mu_I_1
+                       0.0070,0.1000, # mu_T_1
+                       0.0700,0.4000, # mu_A_1
+                       0.0500,0.1500, # omega
+                       0.0500,0.1500, # rho
+                       0.4000,0.6500, # con_FG_2
+                       0.0200,0.5000, # con_FG_1
+                       0.5000,0.7500, # con_FSW_2
+                       0.0200,0.5000, # con_FSW_1
+                       0.2000,0.4000, # con_F2_2
+                       0.0200,0.5000, # con_F2_1
+                       0.8000,0.9500, # con_eff
+                       0.4000,0.9500, # circum_2
+                       0.4000,0.8500, # circum_1
+                       0.5000,0.6000, # circum_eff
+                       0.0300,0.1500, # sup2rate
+                       0.0400,0.1500, # perc2ndline
+                       0.0200,0.1000, # unsup2rate
+                       0.0200,0.1000, # falloff2
+                       0.0200,0.1000, # unsup1rate
+                       0.4600,0.6640, # sup1rate_pre2013
+                       0.1116,0.2587, # falloff1_pre2013
+                       0.5400,0.7180, # sup1rate_pre2015
+                       0.0628,0.1830, # falloff1_pre2015
+                       0.4600,0.7180, # sup1rate_post2015
+                       0.1116,0.2587, # falloff1_post2015
+                       0.0100,0.0300, # birth
+                       0.0500,0.9000, # sigma_2
+                       0.0000,0.5000, # sigma_1
+                       0.0600,0.1000, # Prop_FSW
+                       0.0700,0.1000, # Prop_MC
+                       0.0400,0.0600, # Prop_IFG
+                       0.0300,0.0500, # Prop_IMG
+                       0.1800,0.3500, # Prop_IFSW
+                       0.0400,0.1000, # Prop_IMC
+                       0.1000,0.1500, # Prop_F2
+                       0.1000,0.1500, # Prop_M2
+                       0.0300,0.1000, # Prop_IF2
+                       0.0100,0.2000 # Prop_IM2
+                       ),
+                     nrow = 50,ncol = 2,byrow = TRUE,dimnames = list(
+                       c(
+                         "P_transmission",
+                           "HighV_factor",
+                           "T_factor",
+                           "C_FGMG",
+                           "C_FSWC",
+                           "C_F2M2",
+                           "Tau",
+                           "mu",
+                           "mu_I_2",
+                           "mu_T_2",
+                           "mu_A_2",
+                           "mu_I_1",
+                           "mu_T_1",
+                           "mu_A_1",
+                           "omega",
+                           "rho",
+                           "con_FG_2",
+                           "con_FG_1",
+                           "con_FSW_2",
+                           "con_FSW_1",
+                           "con_F2_2",
+                           "con_F2_1",
+                           "con_eff",
+                           "circum_2",
+                           "circum_1",
+                           "circum_eff",
+                           "sup2rate",
+                           "perc2ndline",
+                           "unsup2rate",
+                           "falloff2",
+                           "unsup1rate",
+                           "sup1rate_pre2013",
+                           "falloff1_pre2013",
+                           "sup1rate_pre2015",
+                           "falloff1_pre2015",
+                           "sup1rate_post2015",
+                           "falloff1_post2015",
+                           "birth",
+                           "sigma_2",
+                           "sigma_1",
+                           "Prop_FSW",
+                           "Prop_MC",
+                           "Prop_IFG",
+                           "Prop_IMG",
+                           "Prop_IFSW",
+                           "Prop_IMC",
+                           "Prop_F2",
+                           "Prop_M2",
+                           "Prop_IF2",
+                           "Prop_IM2"
+                       ),
+                       NULL
+                     ))
 
-
-### with ten parameter sets
-#v     "P_transmission*, HighV_factor*, T_factor*, C_FGMG, C_FSWC, C_F2M2, Prop_FSW, Prop_MC, Prop_IFG, Prop_IMG, Prop_IFSW, Prop_IMC, Prop_F2, Prop_M2, Prop_IF2, Prop_IM2,  Tau,     mu,     mu_I.2,  mu_T.2,  mu_A.2, mu_I.1,  mu_T.1,  mu_A.1, omega, rho, con_F2.2, con_FSW.2, con_FG.2, con_MG.2, con_M2.2, con_MC.2,con_F2.1, con_FSW.1, con_FG.1, con_MG.1, con_M2.1, con_MC.1,con_eff*,circum.2 , circum.1, circum_eff*, sup.2.rate, perc.2nd.line, unsup.1.rate, unsup.2.rate, fall.off.2, birth, sigma.1, sigma.2, sup.1.rate.pre2013, sup.1.rate.pre2015, sup.1.rate.post2015, sup.1.rate.pre2015int, sup.1.rate.post2015.int, fall.1.off.pre2013, fall.1.off.pre2015, fall.1.off.post2015, fall.1.off.pre2015int, fall.1.off.post2015int, phiM, phiF"
-minNew = c(0.006,           5.5,          0,            0.5,   70   ,  2     ,    0.06,   0.07,      0.04 ,    0.03  ,    0.18   ,   0.04,    0.1  ,  0.1 ,    0.03,     0.01     ,0.103,  0.0005,   0.03,    0.007,   0.07,   0.03,   0.007,    0.07,   0.05 , 0.05, 0.2  ,    0.5  ,     0.4  ,    0.4  ,    0.15 ,    0.2  ,     0.02,    0.02,      0.02,     0.02,     0.02,      0.02,    0.8  ,  0.4   ,   0.4,         0.5      ,  0.03     ,    0.04      ,   0.02      ,      0.02   ,     0.02  , 0.01,  0,       0.05,       0.46,                0.540,                0.46,                 0.808,                 0.7,                    0.1116,             0.0628,             0.1116,              0.0028,                 0.0438, 0, 0)
-maxNew = c(0.06,            24,           0.16,         1.5,   150  ,  7     ,    0.1,     0.1,      0.06 ,    0.05  ,    0.35   ,   0.1,     0.15 , 0.15,     0.1,      0.2     ,0.381,    0.0015,   0.07,   0.015,   0.18,   0.15,   0.1,      0.4,    0.15 , 0.15, 0.4 ,    0.75  ,     0.65 ,    0.65 ,    0.4  ,    0.6  ,     0.5,     0.5,       0.5,      0.5,      0.5,       0.5,     0.95 ,  0.95  ,   0.85,        0.6      ,  0.15     ,    0.15      ,   0.1       ,      0.1    ,     0.1   , 0.03,  0.5,     0.9 ,       0.664,               0.718,                0.718,                0.884,                 0.792,                  0.2587,             0.183,              0.2587,              0.0268,                 0.1, 1, 1)
-
-parRangesNew = cbind(minNew, maxNew)
-rownames(parRangesNew) = c("P_transmission", "HighV_factor", "T_factor", "C_FGMG", "C_FSWC", "C_F2M2", "Prop_FSW", "Prop_MC", "Prop_IFG", "Prop_IMG", "Prop_IFSW", "Prop_IMC", "Prop_F2", "Prop_M2", "Prop_IF2", "Prop_IM2",  "Tau",     "mu",     "mu_I.2",  "mu_T.2",  "mu_A.2", "mu_I.1",  "mu_T.1",  "mu_A.1", "omega", "rho", "con_F2.2", "con_FSW.2", "con_FG.2", "con_MG.2", "con_M2.2", "con_MC.2","con_F2.1", "con_FSW.1", "con_FG.1", "con_MG.1", "con_M2.1", "con_MC.1","con_eff" ,"circum.2" , "circum.1", "circum_eff", "sup.2.rate", "perc.2nd.line", "unsup.1.rate", "unsup.2.rate", "fall.off.2", "birth", "sigma.1", "sigma.2", "sup.1.rate.pre2013", "sup.1.rate.pre2015", "sup.1.rate.post2015", "sup.1.rate.pre2015int", "sup.1.rate.post2015int", "fall.off.1.pre2013", "fall.off.1.pre2015", "fall.off.1.post2015", "fall.off.1.pre2015int", "fall.off.1.post2015int", "phiM", "phiF")
