@@ -17,6 +17,7 @@
   * in I categories we have T1 * fall.off.1 inflow but there is no fall.off.1 outflow from T1 compartment
   * in T2S we have outbound movement at rate unsup.2.rate that does not go anywhere; it should be going to T2
   * in the female 2+ category in I compartment we have inbound rho * I_F2 but it should be rho * A_F2
+  * the initial state calculations aren't right; we get proportions summing > 1, fixed.
 
 * Stuff for future development
   * should probably model partnerships forming/dissolving, need to talk to Sandi and (maybe) Joe
