@@ -14,6 +14,8 @@
 rm(list=ls());gc()
 library(here)
 library(Rcpp)
+library(lhs)
+library(numDeriv)
 library(deSolve)
 library(ggplot2)
 
@@ -41,15 +43,17 @@ time <- seq(1990, 2033,by=1)
 # initial conditions
 NF_0 <- 12864738
 NM_0 <- 12594866
-state <- c(S_FG=NF_0*(1-pars$Prop_IFG), IV_FG=0 ,I_FG=NF_0*pars$Prop_IFG,T1_FG=0, T1S_FG=0,T2_FG=0, T2S_FG=0,A_FG = 0,
-           S_MG=NM_0*(1-pars$Prop_IMG), IV_MG=0, I_MG=NM_0*pars$Prop_IMG, T1_MG=0,T1S_MG=0, T2_MG=0,T2S_MG=0,A_MG = 0,
-           S_FSW=NF_0*pars$Prop_FSW, IV_FSW=0, I_FSW=NF_0*pars$Prop_FSW*pars$Prop_IFSW, T1_FSW=0,T1S_FSW=0,T2_FSW=0,T2S_FSW=0, A_FSW=0,
-           S_MC=NM_0*pars$Prop_MC, IV_MC=0, I_MC=NM_0*pars$Prop_MC*pars$Prop_IMC, T1_MC=0,T1S_MC=0,T2_MC=0,T2S_MC=0, A_MC=0,
-           S_F2=NF_0*pars$Prop_F2, IV_F2=0 ,I_F2=NF_0*pars$Prop_F2*pars$Prop_IF2,T1_F2=0,T1S_F2=0,T2_F2=0,T2S_F2=0, A_F2 = 0,
-           S_M2=NM_0*pars$Prop_M2, IV_M2=0, I_M2=NM_0*pars$Prop_IM2*pars$Prop_M2, T1_M2=0,T1S_M2=0,T2_M2=0,T2S_M2=0, A_M2 = 0,D=0, D_HIV = 0)
+prop_FG <- (1-(pars$Prop_FSW+pars$Prop_F2))
+prop_MG <- (1-(pars$Prop_M2+pars$Prop_MC))
+state <- c(S_FG=NF_0*prop_FG*(1-pars$Prop_IFG), IV_FG=0 ,I_FG=NF_0*prop_FG*pars$Prop_IFG,T1_FG=0, T1S_FG=0,T2_FG=0, T2S_FG=0,A_FG = 0,
+           S_MG=NM_0*prop_MG*(1-pars$Prop_IMG), IV_MG=0, I_MG=NM_0*prop_MG*pars$Prop_IMG, T1_MG=0,T1S_MG=0, T2_MG=0,T2S_MG=0,A_MG = 0,
+           S_FSW=NF_0*pars$Prop_FSW*(1-pars$Prop_IFSW), IV_FSW=0, I_FSW=NF_0*pars$Prop_FSW*pars$Prop_IFSW, T1_FSW=0,T1S_FSW=0,T2_FSW=0,T2S_FSW=0, A_FSW=0,
+           S_MC=NM_0*pars$Prop_MC*(1-pars$Prop_IMC), IV_MC=0, I_MC=NM_0*pars$Prop_MC*pars$Prop_IMC, T1_MC=0,T1S_MC=0,T2_MC=0,T2S_MC=0, A_MC=0,
+           S_F2=NF_0*pars$Prop_F2*(1-pars$Prop_IF2), IV_F2=0 ,I_F2=NF_0*pars$Prop_F2*pars$Prop_IF2,T1_F2=0,T1S_F2=0,T2_F2=0,T2S_F2=0, A_F2 = 0,
+           S_M2=NM_0*pars$Prop_M2*(1-pars$Prop_IM2), IV_M2=0, I_M2=NM_0*pars$Prop_IM2*pars$Prop_M2, T1_M2=0,T1S_M2=0,T2_M2=0,T2S_M2=0, A_M2 = 0,D=0, D_HIV = 0)
 
 out <- ode(y = state,times = time,func = hiv_fsw,parms = pars)
-plot(out)
+# plot(out)
 
 
 data_prev <- data.frame(
@@ -72,14 +76,14 @@ ggplot(data = data_prev) +
   theme_bw() +
   xlab("Year") + ylab("Prevalence (blue = F, red = M)")
 
-ggplot(data = data_pop) +
-  geom_line(aes(x=year,y=male),col="firebrick3") +
-  geom_line(aes(x=year,y=female),col="steelblue") +
-  theme_bw() +
-  xlab("Year") + ylab("Population Size (blue = F, red = M)")
+# ggplot(data = data_pop) +
+#   geom_line(aes(x=year,y=male),col="firebrick3") +
+#   geom_line(aes(x=year,y=female),col="steelblue") +
+#   theme_bw() +
+#   xlab("Year") + ylab("Population Size (blue = F, red = M)")
 
 # parameters to fit
-par_ranges <- matrix(data = ,
+par_ranges <- matrix(data =
                      c(0.0060,0.0600, # P_transmission
                        5.5000,24.0000, # HighV_factor
                        0.0000,0.1600, # T_factor
@@ -129,9 +133,11 @@ par_ranges <- matrix(data = ,
                        0.1000,0.1500, # Prop_F2
                        0.1000,0.1500, # Prop_M2
                        0.0300,0.1000, # Prop_IF2
-                       0.0100,0.2000 # Prop_IM2
+                       0.0100,0.2000, # Prop_IM2
+                       0,0.01 # sd_p
+                       # 0,1e4 # sd_pop
                        ),
-                     nrow = 50,ncol = 2,byrow = TRUE,dimnames = list(
+                     nrow = 51,ncol = 2,byrow = TRUE,dimnames = list(
                        c(
                          "P_transmission",
                            "HighV_factor",
@@ -182,8 +188,121 @@ par_ranges <- matrix(data = ,
                            "Prop_F2",
                            "Prop_M2",
                            "Prop_IF2",
-                           "Prop_IM2"
+                           "Prop_IM2",
+                           "sd_p"
+                           # "sd_pop"
                        ),
-                       NULL
+                       c("min","max")
                      ))
 
+pnames <- rownames(par_ranges)
+snames <- c("S_FG","IV_FG","I_FG","T1_FG","T1S_FG","T2_FG","T2S_FG",
+  "A_FG","S_MG","IV_MG","I_MG","T1_MG","T1S_MG","T2_MG",
+  "T2S_MG","A_MG","S_FSW","IV_FSW","I_FSW","T1_FSW","T1S_FSW",
+  "T2_FSW","T2S_FSW","A_FSW","S_MC","IV_MC","I_MC","T1_MC",
+  "T1S_MC","T2_MC","T2S_MC","A_MC","S_F2","IV_F2","I_F2",
+  "T1_F2","T1S_F2","T2_F2","T2S_F2","A_F2","S_M2","IV_M2",
+  "I_M2","T1_M2","T1S_M2","T2_M2","T2S_M2","A_M2"
+)
+
+# useful parameter transformations
+expit <- function(x){
+  1 / (1 + exp(-x))
+}
+
+expit_ab <- function(x,a,b){
+  a + ((b-a)*expit(x))
+}
+
+logit <- function(x){
+  log(x / (1-x))
+}
+
+logit_ab <- function(x,a,b){
+  logit((x-a)/(b-a))
+}
+
+# LHS sampling for optimally uniform points over transformed hypercube
+nstart <- 1e3
+p <- nrow(par_ranges)
+# LHS samples on unit hypercube
+starts <- as.list(data.frame(t(lhs::randomLHS(n = nstart,k = p))))
+starts <- lapply(starts,function(x){
+  # transform to (a,b)
+  x <- setNames(qunif(p = x,min = par_ranges[,"min"],max = par_ranges[,"max"]),pnames)
+  # transform to (-inf,inf)
+  logit_ab(x = x,a = par_ranges[,"min"],b = par_ranges[,"max"])
+})
+
+# x begins at one of the "starts"
+obj <- function(x,ranges){
+
+  # parameters
+  theta <- x[1:40] # parameters
+
+  init_state <- setNames(initstate(x = x,ranges = ranges),snames)
+
+  sim <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = ranges)
+
+  # minimize sse
+  # sse <- sum((data_prev$male - sim[1:28,"Prev_M"])^2)
+  # sse <- sse + sum((data_prev$female - sim[1:28,"Prev_F"])^2)
+  # sse <- sse + sum((data_pop$male - sim[sim[,"time"] %in% data_pop$year,"N_M"])^2)*1e-11
+  # sse <- sse + sum((data_pop$female - sim[sim[,"time"] %in% data_pop$year,"N_F"])^2)*1e-11
+
+  # minimize negative log-likelihood
+  negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
+                 sd = expit_ab(x = x["sd_p"],a = par_ranges["sd_p",1],b = par_ranges["sd_p",2]),
+                 log = TRUE))
+  negll <- negll + sum(dnorm(x = data_prev$female, mean = sim[1:28,"Prev_F"],
+                             sd = expit_ab(x = x["sd_p"],a = par_ranges["sd_p",1],b = par_ranges["sd_p",2]),
+                             log = TRUE))
+  
+  # just a test.........
+  negll <- negll + (sum(dpois(x = data_pop$male, lambda = sim[sim[,"time"] %in% data_pop$year,"N_M"],log = TRUE))*0.1)
+  negll <- negll + (sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))*0.1)
+
+  return(-negll)
+}
+
+# numerical gradient
+obj_gr <- function(x,ranges){
+  numDeriv::grad(func = obj,x = x,ranges = ranges)
+}
+
+# optimize
+control <- list(trace=6,maxit=5e4,reltol=1e-8)
+opt <-  pbmcapply::pbmclapply(X = starts,FUN = function(start){
+  optim(par = start,fn = obj,gr = obj_gr,
+              method = "Nelder-Mead", control=control,
+              ranges = par_ranges)
+},mc.cores = 2)
+
+
+theta <- x$par[1:40] # parameters
+init_state <- setNames(initstate(x = x$par,ranges = par_ranges),snames)
+
+fitted <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = par_ranges)
+fitted_dat <- data.frame(year=fitted[,"time"],
+                         prevM=fitted[,"Prev_M"],
+                         prevF=fitted[,"Prev_F"])
+fitted_dat <-reshape2::melt(fitted_dat,id.vars="year")
+
+fittedPop_dat <- data.frame(year=fitted[,"time"],
+                         popM=fitted[,"N_M"],
+                         popF=fitted[,"N_F"])
+fittedPop_dat <-reshape2::melt(fittedPop_dat,id.vars="year")
+
+ggplot(data = data_prev) +
+  geom_line(aes(x=year,y=male),col="firebrick3") +
+  geom_line(aes(x=year,y=female),col="steelblue") +
+  geom_line(data=fitted_dat,aes(x=year,y=value,color=variable),linetype=2) +
+  theme_bw() +
+  xlab("Year") + ylab("Prevalence (blue = F, red = M)")
+
+ggplot(data = data_pop) +
+  geom_line(aes(x=year,y=male),col="firebrick3") +
+  geom_line(aes(x=year,y=female),col="steelblue") +
+  geom_line(data=fittedPop_dat,aes(x=year,y=value,color=variable),linetype=2) +
+  theme_bw() +
+  xlab("Year") + ylab("Population Size (blue = F, red = M)")

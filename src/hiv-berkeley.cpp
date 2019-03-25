@@ -1,6 +1,7 @@
 /* ################################################################################
 #
 #   Translation of the basic model (by Partow Imani) into C++
+#   ugly code, optimized for speed
 #   Sean Wu
 #   March 2019
 #
@@ -89,7 +90,17 @@ static const std::unordered_map<std::string,size_t> par_ranges = {
   {"falloff1_post2015",36},
   {"birth",37},
   {"sigma_2",38},
-  {"sigma_1",39}
+  {"sigma_1",39},
+  {"Prop_FSW",40},
+  {"Prop_MC",41},
+  {"Prop_IFG",42},
+  {"Prop_IMG",43},
+  {"Prop_IFSW",44},
+  {"Prop_IMC",45},
+  {"Prop_F2",46},
+  {"Prop_M2",47},
+  {"Prop_IF2",48},
+  {"Prop_IM2",49}
 };
 
 /* helper function to extract parameters and transform from (-Inf,Inf) -> (a,b) */
@@ -97,7 +108,50 @@ inline double get_par(const std::string par, const Rcpp::NumericVector& pars, co
   double par_a = ranges(par_ranges.at(par),0);
   double par_b = ranges(par_ranges.at(par),1);
   return expit_ab(Rcpp::as<double>(pars[par]),par_a,par_b);
-}
+};
+
+
+/* ################################################################################
+#   state variables
+################################################################################ */
+
+// [[Rcpp::export]]
+Rcpp::NumericVector initstate(const Rcpp::NumericVector& x, const Rcpp::NumericMatrix& ranges){
+
+  double Prop_FSW = get_par("Prop_FSW",x,ranges);
+  double Prop_MC = get_par("Prop_MC",x,ranges);
+  double Prop_IFG = get_par("Prop_IFG",x,ranges);
+  double Prop_IMG = get_par("Prop_IMG",x,ranges);
+  double Prop_IFSW = get_par("Prop_IFSW",x,ranges);
+  double Prop_IMC = get_par("Prop_IMC",x,ranges);
+  double Prop_F2 = get_par("Prop_F2",x,ranges);
+  double Prop_M2 = get_par("Prop_M2",x,ranges);
+  double Prop_IF2 = get_par("Prop_IF2",x,ranges);
+  double Prop_IM2 = get_par("Prop_IM2",x,ranges);
+
+  static const double NF_0 = 12864738;
+  static const double NM_0 = 12594866;
+
+  double prop_FG = (1.0 - (Prop_FSW + Prop_F2));
+  double prop_MG = (1.0 - (Prop_M2 + Prop_MC));
+
+  Rcpp::NumericVector state(48);
+
+  state[0] = NF_0 * prop_FG * (1.0 - Prop_IFG); /* S_FG */
+  state[2] = NF_0 * prop_FG * Prop_IFG; /* I_FG */
+  state[8] = NM_0 * prop_MG * (1.0 - Prop_IMG); /* S_MG */
+  state[10] = NM_0 * prop_MG * Prop_IMG; /* I_MG */
+  state[16] = NF_0 * Prop_FSW * (1.0 - Prop_IFSW); /* S_FSW */
+  state[18] = NF_0 * Prop_FSW * Prop_IFSW; /* I_FSW */
+  state[24] = NM_0 * Prop_MC * (1.0 - Prop_IMC); /* S_MC */
+  state[26] = NM_0 * Prop_MC * Prop_IMC; /* I_MC */
+  state[32] = NF_0 * Prop_F2 * (1.0 - Prop_IF2); /* S_F2 */
+  state[34] = NF_0 * Prop_F2 * Prop_IF2; /* I_F2 */
+  state[40] = NM_0 * Prop_M2 * (1.0 - Prop_IM2); /* S_M2 */
+  state[42] = NM_0 * Prop_IM2 * Prop_M2; /* I_M2 */
+
+  return state;
+};
 
 
 /* ################################################################################
