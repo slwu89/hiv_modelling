@@ -57,12 +57,29 @@ out <- ode(y = state,times = time,func = hiv_fsw,parms = pars)
 
 
 data_prev <- data.frame(
-  male = c(5.1, 5.9, 6.5, 7.1, 7.5, 7.9, 8.1, 8.1, 8.1, 7.9, 7.7, 7.4, 7.1, 6.7,
-           6.3, 6, 5.6, 5.3, 5.1, 4.8, 4.6, 4.4, 4.2, 4.1, 3.9, 3.7, 3.6, 3.1),
-  female = c(5.7, 6.7, 7.7, 8.6, 9.3, 9.9, 10.3, 10.5, 10.5, 10.4, 10.2, 9.9, 9.5,
-             9.1, 8.6, 8.2, 7.7, 7.3, 7.1, 6.8, 6.6, 6.4, 6.2, 6.1, 6, 5.9, 5.8, 6.4),
+  # male = c(5.1, 5.9, 6.5, 7.1, 7.5, 7.9, 8.1, 8.1, 8.1, 7.9, 7.7, 7.4, 7.1, 6.7,
+  #          6.3, 6, 5.6, 5.3, 5.1, 4.8, 4.6, 4.4, 4.2, 4.1, 3.9, 3.7, 3.6, 3.1),
+  # female = c(5.7, 6.7, 7.7, 8.6, 9.3, 9.9, 10.3, 10.5, 10.5, 10.4, 10.2, 9.9, 9.5,
+  #            9.1, 8.6, 8.2, 7.7, 7.3, 7.1, 6.8, 6.6, 6.4, 6.2, 6.1, 6, 5.9, 5.8, 6.4),
+  male_min = c(4.4, 5.1, 5.7, 6.2, 6.6, 6.9, 7, 7.1, 7, 6.9, 6.7, 6.5, 6.1, 5.7, 5.3, 5, 4.7, 4.4, 4.2, 4, 3.9, 3.7, 3.6, 3.5, 3.3, 3.2, 3.1, 2.7),
+  male_max = c(5.9, 6.8, 7.5, 8.1, 8.7, 9, 9.2, 9.3, 9.2, 8.9, 8.6, 8.3, 7.9, 7.5, 7.1, 6.7, 6.4, 6, 5.8, 5.5, 5.3, 5.1, 4.8, 4.6, 4.5, 4.3, 4.1, 3.6),
+  female_min = c(5, 5.8, 6.7, 7.5, 8.1, 8.6, 8.9, 9.1, 9.2, 9.1, 8.9, 8.6, 8.2, 7.7, 7.3, 6.8, 6.4, 6.1, 5.9, 5.7, 5.5, 5.4, 5.3, 5.2, 5.1, 5, 4.9, 5.8),
+  female_max = c(6.6, 7.8, 8.9, 9.8, 10.7, 11.3, 11.7, 11.9, 12, 11.8, 11.4, 11.1, 10.7, 10.2, 9.7, 9.2, 8.8, 8.4, 8.1, 7.8, 7.5, 7.3, 7.1, 7, 6.9, 6.7, 6.6, 6.9),
   year = 1990:2017
 )
+data_prev$male <- (data_prev$male_min + data_prev$male_max)/2
+data_prev$female <- (data_prev$female_min + data_prev$female_max)/2
+
+# calc SDs such that 99% of prob is within the min and max
+sd_fn <- function(sd,min,max,mean){
+  (integrate(f = dnorm,lower = min,upper = max,mean=mean,sd=sd)$value - 0.99)^2
+}
+
+for(i in 1:nrow(data_prev)){
+  data_prev$sd_m[i] <- optimize(f = sd_fn,interval = c(0,10),min=data_prev$male_min[i],max=data_prev$male_max[i],mean=data_prev$male[i])$minimum
+  data_prev$sd_f[i] <- optimize(f = sd_fn,interval = c(0,10),min=data_prev$female_min[i],max=data_prev$female_max[i],mean=data_prev$female[i])$minimum
+}
+
 
 data_pop <- data.frame(
   male = c(12594866,14818600,16914713,19441222,22749655,26627475,27474896,28339804,29232512),
@@ -133,11 +150,11 @@ par_ranges <- matrix(data =
                        0.1000,0.1500, # Prop_F2
                        0.1000,0.1500, # Prop_M2
                        0.0300,0.1000, # Prop_IF2
-                       0.0100,0.2000, # Prop_IM2
-                       0,0.01 # sd_p
+                       0.0100,0.2000 # Prop_IM2
+                       # 0,0.01 # sd_p
                        # 0,1e4 # sd_pop
                        ),
-                     nrow = 51,ncol = 2,byrow = TRUE,dimnames = list(
+                     nrow = 50,ncol = 2,byrow = TRUE,dimnames = list(
                        c(
                          "P_transmission",
                            "HighV_factor",
@@ -188,9 +205,8 @@ par_ranges <- matrix(data =
                            "Prop_F2",
                            "Prop_M2",
                            "Prop_IF2",
-                           "Prop_IM2",
-                           "sd_p"
-                           # "sd_pop"
+                           "Prop_IM2"
+                           # "sd_p"
                        ),
                        c("min","max")
                      ))
@@ -252,15 +268,14 @@ obj <- function(x,ranges){
 
   # minimize negative log-likelihood
   negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
-                 sd = expit_ab(x = x["sd_p"],a = par_ranges["sd_p",1],b = par_ranges["sd_p",2]),
+                 sd = data_prev$sd_m,
                  log = TRUE))
   negll <- negll + sum(dnorm(x = data_prev$female, mean = sim[1:28,"Prev_F"],
-                             sd = expit_ab(x = x["sd_p"],a = par_ranges["sd_p",1],b = par_ranges["sd_p",2]),
+                             sd = data_prev$sd_f,
                              log = TRUE))
-  
-  # just a test.........
-  negll <- negll + (sum(dpois(x = data_pop$male, lambda = sim[sim[,"time"] %in% data_pop$year,"N_M"],log = TRUE))*0.1)
-  negll <- negll + (sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))*0.1)
+
+  negll <- negll + sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))
+  negll <- negll + sum(dpois(x = data_pop$male, lambda = sim[sim[,"time"] %in% data_pop$year,"N_M"],log = TRUE))
 
   return(-negll)
 }
@@ -271,12 +286,12 @@ obj_gr <- function(x,ranges){
 }
 
 # optimize
-control <- list(trace=6,maxit=5e4,reltol=1e-8)
+control <- list(trace=0,maxit=6e4,reltol=1e-8)
 opt <-  pbmcapply::pbmclapply(X = starts,FUN = function(start){
   optim(par = start,fn = obj,gr = obj_gr,
               method = "Nelder-Mead", control=control,
               ranges = par_ranges)
-},mc.cores = 2)
+},mc.cores = 4)
 
 
 theta <- x$par[1:40] # parameters
