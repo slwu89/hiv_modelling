@@ -87,12 +87,12 @@ data_pop <- data.frame(
   year = c(1990, 1995, 2000, 2005, 2010, 2015, 2016, 2017, 2018)
 )
 
-ggplot(data = data_prev) +
-  geom_line(aes(x=year,y=male),col="firebrick3") +
-  geom_line(aes(x=year,y=female),col="steelblue") +
-  theme_bw() +
-  xlab("Year") + ylab("Prevalence (blue = F, red = M)")
-
+# ggplot(data = data_prev) +
+#   geom_line(aes(x=year,y=male),col="firebrick3") +
+#   geom_line(aes(x=year,y=female),col="steelblue") +
+#   theme_bw() +
+#   xlab("Year") + ylab("Prevalence (blue = F, red = M)")
+# 
 # ggplot(data = data_pop) +
 #   geom_line(aes(x=year,y=male),col="firebrick3") +
 #   geom_line(aes(x=year,y=female),col="steelblue") +
@@ -239,7 +239,7 @@ logit_ab <- function(x,a,b){
 }
 
 # LHS sampling for optimally uniform points over transformed hypercube
-nstart <- 1e3
+nstart <- 5e3
 p <- nrow(par_ranges)
 # LHS samples on unit hypercube
 starts <- as.list(data.frame(t(lhs::randomLHS(n = nstart,k = p))))
@@ -268,10 +268,10 @@ obj <- function(x,ranges){
 
   # minimize negative log-likelihood
   negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
-                 sd = data_prev$sd_m,
+                 sd = data_prev$sd_m*0.1,
                  log = TRUE))
   negll <- negll + sum(dnorm(x = data_prev$female, mean = sim[1:28,"Prev_F"],
-                             sd = data_prev$sd_f,
+                             sd = data_prev$sd_f*0.1,
                              log = TRUE))
 
   negll <- negll + sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))
@@ -286,18 +286,32 @@ obj_gr <- function(x,ranges){
 }
 
 # optimize
-control <- list(trace=0,maxit=6e4,reltol=1e-8)
+control <- list(trace=0,maxit=5e4,reltol=1e-8)
 opt <-  pbmcapply::pbmclapply(X = starts,FUN = function(start){
   optim(par = start,fn = obj,gr = obj_gr,
               method = "Nelder-Mead", control=control,
               ranges = par_ranges)
 },mc.cores = 4)
 
+opt_negll <- unname(sapply(X = opt,FUN = function(x){x$value},USE.NAMES = FALSE))
+opt_vals <- unname(lapply(X = opt,FUN = function(x){x$par}))
+opt_diffs <- dist(x = matrix(unlist(opt_vals),nrow=nstart,byrow = T),method = "euclidean")
 
-theta <- x$par[1:40] # parameters
-init_state <- setNames(initstate(x = x$par,ranges = par_ranges),snames)
+# take the 10 best and follow up with BFGS
+new_starts <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
+
+new_opt <- pbmcapply::pbmclapply(X = new_starts,FUN = function(start){
+  optim(par = start,fn = obj,gr = obj_gr,
+        method = "BFGS", control=control,
+        ranges = par_ranges)
+},mc.cores = 4)
+
+# plot MLE
+theta <- new_opt[[1]]$par[1:40]
+init_state <- setNames(initstate(x = new_opt[[1]]$par,ranges = par_ranges),snames)
 
 fitted <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = par_ranges)
+
 fitted_dat <- data.frame(year=fitted[,"time"],
                          prevM=fitted[,"Prev_M"],
                          prevF=fitted[,"Prev_F"])
