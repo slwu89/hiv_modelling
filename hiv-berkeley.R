@@ -268,10 +268,10 @@ obj <- function(x,ranges){
 
   # minimize negative log-likelihood
   negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
-                 sd = data_prev$sd_m*0.1,
+                 sd = data_prev$sd_m*0.05,
                  log = TRUE))
   negll <- negll + sum(dnorm(x = data_prev$female, mean = sim[1:28,"Prev_F"],
-                             sd = data_prev$sd_f*0.1,
+                             sd = data_prev$sd_f*0.05,
                              log = TRUE))
 
   negll <- negll + sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))
