@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <string>
 
-// [[Rcpp::plugins(cpp14)]]
+// [[Rcpp::plugins(cpp11)]]
 
 
 /* ################################################################################

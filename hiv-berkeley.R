@@ -18,6 +18,7 @@ library(lhs)
 library(numDeriv)
 library(deSolve)
 library(ggplot2)
+library(gridExtra)
 
 sourceCpp(here("src/hiv-berkeley.cpp"))
 
@@ -239,7 +240,7 @@ logit_ab <- function(x,a,b){
 }
 
 # LHS sampling for optimally uniform points over transformed hypercube
-nstart <- 5e3
+nstart <- 1e3
 p <- nrow(par_ranges)
 # LHS samples on unit hypercube
 starts <- as.list(data.frame(t(lhs::randomLHS(n = nstart,k = p))))
@@ -268,10 +269,10 @@ obj <- function(x,ranges){
 
   # minimize negative log-likelihood
   negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
-                 sd = data_prev$sd_m*0.05,
+                 sd = data_prev$sd_m*0.01,
                  log = TRUE))
   negll <- negll + sum(dnorm(x = data_prev$female, mean = sim[1:28,"Prev_F"],
-                             sd = data_prev$sd_f*0.05,
+                             sd = data_prev$sd_f*0.01,
                              log = TRUE))
 
   negll <- negll + sum(dpois(x = data_pop$female, lambda = sim[sim[,"time"] %in% data_pop$year,"N_F"],log = TRUE))
@@ -295,22 +296,24 @@ opt <-  pbmcapply::pbmclapply(X = starts,FUN = function(start){
 
 opt_negll <- unname(sapply(X = opt,FUN = function(x){x$value},USE.NAMES = FALSE))
 opt_vals <- unname(lapply(X = opt,FUN = function(x){x$par}))
-opt_diffs <- dist(x = matrix(unlist(opt_vals),nrow=nstart,byrow = T),method = "euclidean")
+# opt_diffs <- dist(x = matrix(unlist(opt_vals),nrow=nstart,byrow = T),method = "euclidean")
+# 
+# # take the 10 best and follow up with BFGS
+# new_starts <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
+# 
+# new_opt <- pbmcapply::pbmclapply(X = new_starts,FUN = function(start){
+#   optim(par = start,fn = obj,gr = obj_gr,
+#         method = "BFGS", control=control,
+#         ranges = par_ranges)
+# },mc.cores = 4)
 
 # take the 10 best and follow up with BFGS
-new_starts <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
-
-new_opt <- pbmcapply::pbmclapply(X = new_starts,FUN = function(start){
-  optim(par = start,fn = obj,gr = obj_gr,
-        method = "BFGS", control=control,
-        ranges = par_ranges)
-},mc.cores = 4)
+best_pars <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
 
 # plot MLE
-theta <- new_opt[[1]]$par[1:40]
-init_state <- setNames(initstate(x = new_opt[[1]]$par,ranges = par_ranges),snames)
-
-fitted <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = par_ranges)
+# theta <- best_pars[[1]]$par[1:40]
+init_state <- setNames(initstate(x = best_pars[[2]],ranges = par_ranges),snames)
+fitted <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = best_pars[[2]],ranges = par_ranges)
 
 fitted_dat <- data.frame(year=fitted[,"time"],
                          prevM=fitted[,"Prev_M"],
@@ -322,16 +325,18 @@ fittedPop_dat <- data.frame(year=fitted[,"time"],
                          popF=fitted[,"N_F"])
 fittedPop_dat <-reshape2::melt(fittedPop_dat,id.vars="year")
 
-ggplot(data = data_prev) +
+p_plot <- ggplot(data = data_prev) +
   geom_line(aes(x=year,y=male),col="firebrick3") +
   geom_line(aes(x=year,y=female),col="steelblue") +
   geom_line(data=fitted_dat,aes(x=year,y=value,color=variable),linetype=2) +
   theme_bw() +
   xlab("Year") + ylab("Prevalence (blue = F, red = M)")
 
-ggplot(data = data_pop) +
+d_plot <- ggplot(data = data_pop) +
   geom_line(aes(x=year,y=male),col="firebrick3") +
   geom_line(aes(x=year,y=female),col="steelblue") +
   geom_line(data=fittedPop_dat,aes(x=year,y=value,color=variable),linetype=2) +
   theme_bw() +
   xlab("Year") + ylab("Population Size (blue = F, red = M)")
+
+grid.arrange(p_plot,d_plot)
