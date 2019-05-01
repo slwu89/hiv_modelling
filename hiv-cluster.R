@@ -19,9 +19,9 @@ library(deSolve)
 
 library(foreach)
 library(parallel)
-library(doParallel)
+library(doSNOW)
 
-sourceCpp("hiv-berkeley.cpp")
+# sourceCpp("hiv-berkeley.cpp")
 
 # parameters
 pars <- list(NF_0 = 12864738, NM_0 = 12594866, P_transmission = 0.01, HighV_factor = 10,
@@ -262,9 +262,14 @@ obj <- function(x,ranges){
 
 
 cl <- parallel::makeCluster(parallel::detectCores())
-doParallel::registerDoParallel(cl)
+doSNOW::registerDoSNOW(cl)
 
-opt <- foreach(it = starts,.combine = "c",.inorder = FALSE, .packages = c("deSolve","stats")) %do% {
+parallel::clusterEvalQ(cl,{
+  Rcpp::sourceCpp("src/hiv-berkeley.cpp")
+})
+
+opt <- foreach(it = starts,.combine = "c",.inorder = FALSE, 
+               .packages = c("deSolve","stats"),.export = ls()) %dopar% {
     optim(par = it,fn = obj,
           method = "Nelder-Mead", control=list(trace=0,maxit=5e4,reltol=1e-8),
           ranges = par_ranges)
