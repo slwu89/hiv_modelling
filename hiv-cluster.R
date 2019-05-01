@@ -12,15 +12,16 @@
 ################################################################################
 
 rm(list=ls());gc()
-library(here)
+
 library(Rcpp)
 library(lhs)
-library(numDeriv)
 library(deSolve)
-library(ggplot2)
-library(gridExtra)
 
-sourceCpp(here("src/hiv-berkeley.cpp"))
+library(foreach)
+library(parallel)
+library(doParallel)
+
+sourceCpp("hiv-berkeley.cpp")
 
 # parameters
 pars <- list(NF_0 = 12864738, NM_0 = 12594866, P_transmission = 0.01, HighV_factor = 10,
@@ -53,10 +54,6 @@ state <- c(S_FG=NF_0*prop_FG*(1-pars$Prop_IFG), IV_FG=0 ,I_FG=NF_0*prop_FG*pars$
            S_F2=NF_0*pars$Prop_F2*(1-pars$Prop_IF2), IV_F2=0 ,I_F2=NF_0*pars$Prop_F2*pars$Prop_IF2,T1_F2=0,T1S_F2=0,T2_F2=0,T2S_F2=0, A_F2 = 0,
            S_M2=NM_0*pars$Prop_M2*(1-pars$Prop_IM2), IV_M2=0, I_M2=NM_0*pars$Prop_IM2*pars$Prop_M2, T1_M2=0,T1S_M2=0,T2_M2=0,T2S_M2=0, A_M2 = 0,D=0, D_HIV = 0)
 
-out <- ode(y = state,times = time,func = hiv_fsw,parms = pars)
-# plot(out)
-
-
 data_prev <- data.frame(
   # male = c(5.1, 5.9, 6.5, 7.1, 7.5, 7.9, 8.1, 8.1, 8.1, 7.9, 7.7, 7.4, 7.1, 6.7,
   #          6.3, 6, 5.6, 5.3, 5.1, 4.8, 4.6, 4.4, 4.2, 4.1, 3.9, 3.7, 3.6, 3.1),
@@ -87,18 +84,6 @@ data_pop <- data.frame(
   female = c(12864738,15142176,17263329,19969323,23348936,27252482,28097305,28970215,29858880),
   year = c(1990, 1995, 2000, 2005, 2010, 2015, 2016, 2017, 2018)
 )
-
-# ggplot(data = data_prev) +
-#   geom_line(aes(x=year,y=male),col="firebrick3") +
-#   geom_line(aes(x=year,y=female),col="steelblue") +
-#   theme_bw() +
-#   xlab("Year") + ylab("Prevalence (blue = F, red = M)")
-# 
-# ggplot(data = data_pop) +
-#   geom_line(aes(x=year,y=male),col="firebrick3") +
-#   geom_line(aes(x=year,y=female),col="steelblue") +
-#   theme_bw() +
-#   xlab("Year") + ylab("Population Size (blue = F, red = M)")
 
 # parameters to fit
 par_ranges <- matrix(data =
@@ -259,13 +244,7 @@ obj <- function(x,ranges){
 
   init_state <- setNames(initstate(x = x,ranges = ranges),snames)
 
-  sim <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = ranges)
-
-  # minimize sse
-  # sse <- sum((data_prev$male - sim[1:28,"Prev_M"])^2)
-  # sse <- sse + sum((data_prev$female - sim[1:28,"Prev_F"])^2)
-  # sse <- sse + sum((data_pop$male - sim[sim[,"time"] %in% data_pop$year,"N_M"])^2)*1e-11
-  # sse <- sse + sum((data_pop$female - sim[sim[,"time"] %in% data_pop$year,"N_F"])^2)*1e-11
+  sim <- deSolve::ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = theta,ranges = ranges)
 
   # minimize negative log-likelihood
   negll <- sum(dnorm(x = data_prev$male, mean = sim[1:28,"Prev_M"],
@@ -281,62 +260,15 @@ obj <- function(x,ranges){
   return(-negll)
 }
 
-# numerical gradient
-obj_gr <- function(x,ranges){
-  numDeriv::grad(func = obj,x = x,ranges = ranges)
+
+cl <- parallel::makeCluster(parallel::detectCores())
+doParallel::registerDoParallel(cl)
+
+opt <- foreach(it = starts,.combine = "c",.inorder = FALSE, .packages = c("deSolve","stats")) %do% {
+    optim(par = it,fn = obj,
+          method = "Nelder-Mead", control=list(trace=0,maxit=5e4,reltol=1e-8),
+          ranges = par_ranges)
 }
 
-# optimize
-control <- list(trace=0,maxit=5e4,reltol=1e-8)
-opt <-  pbmcapply::pbmclapply(X = starts,FUN = function(start){
-  optim(par = start,fn = obj,gr = obj_gr,
-              method = "Nelder-Mead", control=control,
-              ranges = par_ranges)
-},mc.cores = 6)
-
-opt_negll <- unname(sapply(X = opt,FUN = function(x){x$value},USE.NAMES = FALSE))
-opt_vals <- unname(lapply(X = opt,FUN = function(x){x$par}))
-# opt_diffs <- dist(x = matrix(unlist(opt_vals),nrow=nstart,byrow = T),method = "euclidean")
-# 
-# # take the 10 best and follow up with BFGS
-# new_starts <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
-# 
-# new_opt <- pbmcapply::pbmclapply(X = new_starts,FUN = function(start){
-#   optim(par = start,fn = obj,gr = obj_gr,
-#         method = "BFGS", control=control,
-#         ranges = par_ranges)
-# },mc.cores = 4)
-
-# take the 10 best and follow up with BFGS
-best_pars <- opt_vals[order(opt_negll,decreasing = F)[1:10]]
-
-# plot MLE
-# theta <- best_pars[[1]]$par[1:40]
-init_state <- setNames(initstate(x = best_pars[[2]],ranges = par_ranges),snames)
-fitted <- ode(y = init_state,times = 1990:2020,func = hiv_fsw_fit,parms = best_pars[[2]],ranges = par_ranges)
-
-fitted_dat <- data.frame(year=fitted[,"time"],
-                         prevM=fitted[,"Prev_M"],
-                         prevF=fitted[,"Prev_F"])
-fitted_dat <-reshape2::melt(fitted_dat,id.vars="year")
-
-fittedPop_dat <- data.frame(year=fitted[,"time"],
-                         popM=fitted[,"N_M"],
-                         popF=fitted[,"N_F"])
-fittedPop_dat <-reshape2::melt(fittedPop_dat,id.vars="year")
-
-p_plot <- ggplot(data = data_prev) +
-  geom_line(aes(x=year,y=male),col="firebrick3") +
-  geom_line(aes(x=year,y=female),col="steelblue") +
-  geom_line(data=fitted_dat,aes(x=year,y=value,color=variable),linetype=2) +
-  theme_bw() +
-  xlab("Year") + ylab("Prevalence (blue = F, red = M)")
-
-d_plot <- ggplot(data = data_pop) +
-  geom_line(aes(x=year,y=male),col="firebrick3") +
-  geom_line(aes(x=year,y=female),col="steelblue") +
-  geom_line(data=fittedPop_dat,aes(x=year,y=value,color=variable),linetype=2) +
-  theme_bw() +
-  xlab("Year") + ylab("Population Size (blue = F, red = M)")
-
-grid.arrange(p_plot,d_plot)
+parallel::stopCluster(cl)
+rm(cl);gc()
