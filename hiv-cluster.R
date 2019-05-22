@@ -16,12 +16,13 @@ rm(list=ls());gc()
 library(Rcpp)
 library(lhs)
 library(deSolve)
+library(here)
 
 library(foreach)
 library(parallel)
 library(doSNOW)
 
-# sourceCpp("hiv-berkeley.cpp")
+# sourceCpp(here("src/hiv-berkeley.cpp"))
 
 # parameters
 pars <- list(NF_0 = 12864738, NM_0 = 12594866, P_transmission = 0.01, HighV_factor = 10,
@@ -261,7 +262,7 @@ obj <- function(x,ranges){
 }
 
 
-cl <- parallel::makeCluster(parallel::detectCores())
+cl <- parallel::makeCluster(parallel::detectCores()-2)
 doSNOW::registerDoSNOW(cl)
 
 parallel::clusterEvalQ(cl,{
@@ -270,10 +271,12 @@ parallel::clusterEvalQ(cl,{
 
 opt <- foreach(it = starts,.combine = "c",.inorder = FALSE, 
                .packages = c("deSolve","stats"),.export = ls()) %dopar% {
-    optim(par = it,fn = obj,
+    list(optim(par = it,fn = obj,
           method = "Nelder-Mead", control=list(trace=0,maxit=5e4,reltol=1e-8),
-          ranges = par_ranges)
-}
+          ranges = par_ranges))
+               }
+
+saveRDS(object = opt,file = here("fits.rds"))
 
 parallel::stopCluster(cl)
 rm(cl);gc()
