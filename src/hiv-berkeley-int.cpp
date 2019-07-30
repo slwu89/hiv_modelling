@@ -13,7 +13,7 @@
 static const Rcpp::CharacterVector outnames = Rcpp::CharacterVector::create("dx","N_F","N_M","Prev_F","Prev_M","Prev_F","all_cause_mort","hiv_mort","incidence_FG","incidence_MG","incidence_FSW","incidence_MC","incidence_F2","incidence_M2");
 
 // [[Rcpp::export]]
-Rcpp::List hiv_fsw_int(const double t, const Rcpp::NumericVector& state, const Rcpp::NumericVector& pars, const Rcpp::NumericMatrix& ranges){
+Rcpp::List hiv_fsw_int(const double t, const Rcpp::NumericVector& state, const Rcpp::NumericVector& pars){
 
   /* out */
   Rcpp::List out(14);
