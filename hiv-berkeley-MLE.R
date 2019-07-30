@@ -240,7 +240,7 @@ logit_ab <- function(x,a,b){
 }
 
 # LHS sampling for optimally uniform points over transformed hypercube
-nstart <- 1e3
+nstart <- 5e3
 p <- nrow(par_ranges)
 # LHS samples on unit hypercube
 starts <- as.list(data.frame(t(lhs::randomLHS(n = nstart,k = p))))
